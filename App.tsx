@@ -1,31 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { ChatMessage as ChatMessageType } from './types';
-import { getChatResponse, isApiKeyConfigured } from './services/geminiService';
+import { getChatResponse, initializeChat, resetChat } from './services/geminiService';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
-
-
-const ApiKeyErrorScreen: React.FC = () => {
-    return (
-        <div className="flex flex-col h-screen bg-gray-900 text-gray-100 font-sans items-center justify-center p-8 text-center">
-            <div className="max-w-2xl bg-gray-800 p-8 rounded-lg shadow-2xl border border-red-500/50">
-                 <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-red-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <h1 className="text-2xl font-bold text-red-400 mb-2">Configuration Error</h1>
-                <p className="text-gray-300">
-                    The application cannot connect to the Gemini API because the API key is missing.
-                </p>
-                <p className="text-gray-400 mt-4 text-sm">
-                    If you are the developer, please ensure the <code className="bg-gray-700 text-purple-400 px-2 py-1 rounded">API_KEY</code> environment variable is set in your deployment settings (e.g., on Vercel).
-                </p>
-            </div>
-        </div>
-    );
-};
+import { ApiKeySetup } from './components/ApiKeySetup';
 
 
 const App: React.FC = () => {
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null);
+  
   const [messages, setMessages] = useState<ChatMessageType[]>([
     {
       role: 'bot',
@@ -33,8 +17,21 @@ const App: React.FC = () => {
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const savedKey = localStorage.getItem('GEMINI_API_KEY');
+    if (savedKey) {
+      if (initializeChat(savedKey)) {
+        setApiKey(savedKey);
+        setApiKeyError(null);
+      } else {
+        localStorage.removeItem('GEMINI_API_KEY');
+        setApiKeyError("The stored API Key is invalid. Please enter a valid one.");
+      }
+    }
+  }, []);
+
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -44,9 +41,20 @@ const App: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
+  const handleInvalidApiKey = useCallback(() => {
+    localStorage.removeItem('GEMINI_API_KEY');
+    setApiKey(null);
+    resetChat();
+    setApiKeyError("Your API Key is invalid or has been rejected. Please enter a valid one.");
+  }, []);
+
   const handleSendMessage = useCallback(async (userMessage: string) => {
+    if (!apiKey) {
+      handleInvalidApiKey();
+      return;
+    }
+
     setIsLoading(true);
-    setError(null);
     const newUserMessage: ChatMessageType = { role: 'user', text: userMessage };
     setMessages((prev) => [...prev, newUserMessage]);
 
@@ -55,27 +63,53 @@ const App: React.FC = () => {
       const newBotMessage: ChatMessageType = { role: 'bot', text: botResponseText };
       setMessages((prev) => [...prev, newBotMessage]);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
-      setError(`Error: ${errorMessage}`);
-      const errorBotMessage: ChatMessageType = {
-        role: 'bot',
-        text: 'Sorry, abhi thoda technical issue hai. Baad mein try karna.',
-      };
-      setMessages((prev) => [...prev, errorBotMessage]);
+      if (err instanceof Error && err.message === 'Invalid API Key') {
+        handleInvalidApiKey();
+      } else {
+        const errorBotMessage: ChatMessageType = {
+          role: 'bot',
+          text: 'Sorry, abhi thoda technical issue hai. Baad mein try karna.',
+        };
+        setMessages((prev) => [...prev, errorBotMessage]);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [apiKey, handleInvalidApiKey]);
+  
+  const handleKeySubmit = (newKey: string) => {
+    const trimmedKey = newKey.trim();
+    if(trimmedKey && initializeChat(trimmedKey)) {
+      localStorage.setItem('GEMINI_API_KEY', trimmedKey);
+      setApiKey(trimmedKey);
+      setApiKeyError(null);
+    } else {
+      setApiKeyError("Invalid API key format. Please check and try again.");
+    }
+  }
 
-  if (!isApiKeyConfigured) {
-    return <ApiKeyErrorScreen />;
+  const handleChangeApiKey = () => {
+    localStorage.removeItem('GEMINI_API_KEY');
+    setApiKey(null);
+    resetChat();
+    setApiKeyError(null);
+  }
+
+
+  if (!apiKey) {
+    return <ApiKeySetup onKeySubmit={handleKeySubmit} error={apiKeyError} />;
   }
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-gray-100 font-sans">
-      <header className="bg-gray-800 p-4 border-b border-gray-700 shadow-lg text-center">
-        <h1 className="text-xl font-bold text-purple-400">Femdom Hinglish Chatbot</h1>
-        <p className="text-xs text-gray-400">Aapki 'Mistress' ke saath</p>
+      <header className="bg-gray-800 p-4 border-b border-gray-700 shadow-lg flex justify-between items-center">
+        <div className="text-center flex-grow">
+          <h1 className="text-xl font-bold text-purple-400">Femdom Hinglish Chatbot</h1>
+          <p className="text-xs text-gray-400">Aapki 'Mistress' ke saath</p>
+        </div>
+        <button onClick={handleChangeApiKey} className="text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1 rounded-md transition-colors">
+          Change Key
+        </button>
       </header>
 
       <main className="flex-grow p-4 overflow-y-auto">
@@ -97,7 +131,6 @@ const App: React.FC = () => {
               </div>
             </div>
           )}
-          {error && <p className="text-red-500 text-center">{error}</p>}
           <div ref={chatEndRef} />
         </div>
       </main>

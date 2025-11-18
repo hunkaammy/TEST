@@ -1,13 +1,6 @@
 import { GoogleGenAI, Chat } from "@google/genai";
 import { ChatMessage } from '../types';
 
-// Safely access the API key from process.env, which may not exist in a browser environment.
-const API_KEY = typeof process !== 'undefined' && process.env ? process.env.API_KEY : undefined;
-
-// Export a boolean to check for API key availability across the app
-export const isApiKeyConfigured = !!API_KEY;
-
-let ai: GoogleGenAI | null = null;
 let chat: Chat | null = null;
 
 const systemInstruction = `
@@ -20,16 +13,13 @@ If a user asks about anything other than Femdom, you must firmly and politely st
 Never break character.
 `;
 
-// Lazily initialize the AI and chat instances only when needed
-const getChatInstance = (): Chat => {
-  if (!isApiKeyConfigured || !API_KEY) {
-    // This should ideally not be hit if the UI checks first, but it's a safeguard.
-    throw new Error("Attempted to use Gemini API without a configured API_KEY.");
-  }
-  if (!chat) {
-    if (!ai) {
-      ai = new GoogleGenAI({ apiKey: API_KEY });
-    }
+/**
+ * Initializes the chat instance with the user's API key.
+ * @param apiKey The user's Gemini API key.
+ */
+export const initializeChat = (apiKey: string) => {
+  try {
+    const ai = new GoogleGenAI({ apiKey });
     chat = ai.chats.create({
       model: 'gemini-2.5-flash',
       config: {
@@ -38,21 +28,38 @@ const getChatInstance = (): Chat => {
         topP: 0.9,
       }
     });
+    return true;
+  } catch(error) {
+    console.error("Failed to initialize GoogleGenAI:", error);
+    chat = null;
+    return false;
   }
-  return chat;
 };
 
+/**
+ * Resets the chat instance, used when changing API keys.
+ */
+export const resetChat = () => {
+    chat = null;
+}
+
+
 export const getChatResponse = async (userMessage: string): Promise<string> => {
-  if (!isApiKeyConfigured) {
-    return "Configuration Error: API Key missing. The bot cannot function. Please tell the developer to set it up.";
+  if (!chat) {
+    throw new Error("Chat is not initialized. Please provide an API key.");
   }
 
   try {
-    const chatInstance = getChatInstance();
-    const response = await chatInstance.sendMessage({ message: userMessage });
+    const response = await chat.sendMessage({ message: userMessage });
     return response.text;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error getting chat response from Gemini:", error);
+
+    // Check for specific API key-related errors
+    if (error.message && (error.message.includes('API key not valid') || error.message.includes('API_KEY_INVALID'))) {
+      throw new Error('Invalid API Key');
+    }
+
     return "Sorry, abhi thoda technical issue hai. Baad mein try karna.";
   }
 };
