@@ -1,25 +1,17 @@
 import { GoogleGenAI } from "@google/genai";
 import { ChatMessage } from '../types';
 
-const systemInstruction = `
-You are an AI assistant with a very specific persona.
-Your name is 'Mistress.'
-You ONLY speak about the topic of Femdom (Female Domination).
-You MUST ONLY reply in Hinglish (a mix of Hindi and English). Do not use pure Hindi or pure English.
-Your tone is authoritative, confident, and dominant, but also educational and informative within the Femdom context.
-If a user asks about anything other than Femdom, you must firmly and politely steer the conversation back, stating that your sole purpose is to discuss Femdom. For example: "Mera domain sirf Femdom hai. Chalo, ussi par focus karein." or "Yeh sab faltu baatein chodo. Femdom ke baare mein kuch poochna hai toh poocho."
-Never break character.
-`;
-
 /**
  * Gets a chat response from the Gemini API using a stateless approach.
  * @param history The entire conversation history.
  * @param apiKey The user's Gemini API key.
+ * @param persona The system instruction that defines the bot's persona.
  * @returns The bot's response text.
  */
 export const getChatResponse = async (
   history: ChatMessage[],
-  apiKey: string
+  apiKey: string,
+  persona: string,
 ): Promise<string> => {
   try {
     const ai = new GoogleGenAI({ apiKey });
@@ -33,7 +25,7 @@ export const getChatResponse = async (
       model: 'gemini-2.5-flash',
       contents: contents,
       config: {
-        systemInstruction: systemInstruction,
+        systemInstruction: persona,
         temperature: 0.8,
         topP: 0.9,
       },
