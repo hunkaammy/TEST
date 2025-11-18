@@ -1,14 +1,14 @@
-
 import { GoogleGenAI, Chat } from "@google/genai";
 import { ChatMessage } from '../types';
 
-const API_KEY = process.env.API_KEY;
+// Safely access the API key from process.env, which may not exist in a browser environment.
+const API_KEY = typeof process !== 'undefined' && process.env ? process.env.API_KEY : undefined;
 
-if (!API_KEY) {
-  throw new Error("API_KEY environment variable not set");
-}
+// Export a boolean to check for API key availability across the app
+export const isApiKeyConfigured = !!API_KEY;
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+let ai: GoogleGenAI | null = null;
+let chat: Chat | null = null;
 
 const systemInstruction = `
 You are an AI assistant with a very specific persona.
@@ -20,19 +20,36 @@ If a user asks about anything other than Femdom, you must firmly and politely st
 Never break character.
 `;
 
-const chat: Chat = ai.chats.create({
-  model: 'gemini-2.5-flash',
-  config: {
-    systemInstruction: systemInstruction,
-    temperature: 0.8,
-    topP: 0.9,
+// Lazily initialize the AI and chat instances only when needed
+const getChatInstance = (): Chat => {
+  if (!isApiKeyConfigured || !API_KEY) {
+    // This should ideally not be hit if the UI checks first, but it's a safeguard.
+    throw new Error("Attempted to use Gemini API without a configured API_KEY.");
   }
-});
-
+  if (!chat) {
+    if (!ai) {
+      ai = new GoogleGenAI({ apiKey: API_KEY });
+    }
+    chat = ai.chats.create({
+      model: 'gemini-2.5-flash',
+      config: {
+        systemInstruction: systemInstruction,
+        temperature: 0.8,
+        topP: 0.9,
+      }
+    });
+  }
+  return chat;
+};
 
 export const getChatResponse = async (userMessage: string): Promise<string> => {
+  if (!isApiKeyConfigured) {
+    return "Configuration Error: API Key missing. The bot cannot function. Please tell the developer to set it up.";
+  }
+
   try {
-    const response = await chat.sendMessage({ message: userMessage });
+    const chatInstance = getChatInstance();
+    const response = await chatInstance.sendMessage({ message: userMessage });
     return response.text;
   } catch (error) {
     console.error("Error getting chat response from Gemini:", error);
