@@ -1,34 +1,27 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { ChatMessage as ChatMessageType } from './types';
-import { getChatResponse, initializeChat, resetChat } from './services/geminiService';
+import { getChatResponse } from './services/geminiService';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
 import { ApiKeySetup } from './components/ApiKeySetup';
 
+const initialMessage: ChatMessageType = {
+  role: 'bot',
+  text: "Hmph. Tum aa gaye. Main 'Mistress' hoon. Sirf Femdom par baat hogi. Time waste mat karna. Poocho, kya jaanna hai?",
+};
 
 const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [apiKeyError, setApiKeyError] = useState<string | null>(null);
   
-  const [messages, setMessages] = useState<ChatMessageType[]>([
-    {
-      role: 'bot',
-      text: "Hmph. Tum aa gaye. Main 'Mistress' hoon. Sirf Femdom par baat hogi. Time waste mat karna. Poocho, kya jaanna hai?",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessageType[]>([initialMessage]);
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const savedKey = localStorage.getItem('GEMINI_API_KEY');
     if (savedKey) {
-      if (initializeChat(savedKey)) {
-        setApiKey(savedKey);
-        setApiKeyError(null);
-      } else {
-        localStorage.removeItem('GEMINI_API_KEY');
-        setApiKeyError("The stored API Key is invalid. Please enter a valid one.");
-      }
+      setApiKey(savedKey);
     }
   }, []);
 
@@ -44,7 +37,6 @@ const App: React.FC = () => {
   const handleInvalidApiKey = useCallback(() => {
     localStorage.removeItem('GEMINI_API_KEY');
     setApiKey(null);
-    resetChat();
     setApiKeyError("Your API Key is invalid or has been rejected. Please enter a valid one.");
   }, []);
 
@@ -56,10 +48,12 @@ const App: React.FC = () => {
 
     setIsLoading(true);
     const newUserMessage: ChatMessageType = { role: 'user', text: userMessage };
-    setMessages((prev) => [...prev, newUserMessage]);
+    
+    const historyForApi = [...messages, newUserMessage];
+    setMessages(historyForApi);
 
     try {
-      const botResponseText = await getChatResponse(userMessage);
+      const botResponseText = await getChatResponse(historyForApi, apiKey);
       const newBotMessage: ChatMessageType = { role: 'bot', text: botResponseText };
       setMessages((prev) => [...prev, newBotMessage]);
     } catch (err) {
@@ -75,31 +69,34 @@ const App: React.FC = () => {
       } else {
         errorBotMessage = {
           role: 'bot',
-          text: 'Sorry, abhi thoda technical issue hai. Baad mein try karna.',
+          text: (err as Error).message || 'Sorry, abhi thoda technical issue hai. Baad mein try karna.',
         };
       }
       setMessages((prev) => [...prev, errorBotMessage]);
     } finally {
       setIsLoading(false);
     }
-  }, [apiKey, handleInvalidApiKey]);
+  }, [apiKey, handleInvalidApiKey, messages]);
   
   const handleKeySubmit = (newKey: string) => {
     const trimmedKey = newKey.trim();
-    if(trimmedKey && initializeChat(trimmedKey)) {
+    if(trimmedKey) {
       localStorage.setItem('GEMINI_API_KEY', trimmedKey);
       setApiKey(trimmedKey);
       setApiKeyError(null);
     } else {
-      setApiKeyError("Invalid API key format. Please check and try again.");
+      setApiKeyError("API key cannot be empty.");
     }
   }
 
   const handleChangeApiKey = () => {
     localStorage.removeItem('GEMINI_API_KEY');
     setApiKey(null);
-    resetChat();
     setApiKeyError(null);
+  }
+
+  const handleResetChat = () => {
+    setMessages([initialMessage]);
   }
 
 
@@ -114,9 +111,14 @@ const App: React.FC = () => {
           <h1 className="text-xl font-bold text-purple-400">Femdom Hinglish Chatbot</h1>
           <p className="text-xs text-gray-400">Aapki 'Mistress' ke saath</p>
         </div>
-        <button onClick={handleChangeApiKey} className="text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1 rounded-md transition-colors">
-          Change Key
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleResetChat} className="text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1 rounded-md transition-colors">
+            Reset Chat
+          </button>
+          <button onClick={handleChangeApiKey} className="text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1 rounded-md transition-colors">
+            Change Key
+          </button>
+        </div>
       </header>
 
       <main className="flex-grow p-4 overflow-y-auto">
