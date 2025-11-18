@@ -55,9 +55,16 @@ export const getChatResponse = async (userMessage: string): Promise<string> => {
   } catch (error: any) {
     console.error("Error getting chat response from Gemini:", error);
 
+    const errorMessage = error.message || '';
+
     // Check for specific API key-related errors
-    if (error.message && (error.message.includes('API key not valid') || error.message.includes('API_KEY_INVALID'))) {
+    if (errorMessage.includes('API key not valid') || errorMessage.includes('API_KEY_INVALID')) {
       throw new Error('Invalid API Key');
+    }
+
+    // Check for overloaded model errors (503 Service Unavailable)
+    if (errorMessage.includes('503') || errorMessage.toUpperCase().includes('UNAVAILABLE') || errorMessage.includes('overloaded')) {
+      throw new Error('Model Overloaded');
     }
 
     return "Sorry, abhi thoda technical issue hai. Baad mein try karna.";

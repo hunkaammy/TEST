@@ -63,15 +63,22 @@ const App: React.FC = () => {
       const newBotMessage: ChatMessageType = { role: 'bot', text: botResponseText };
       setMessages((prev) => [...prev, newBotMessage]);
     } catch (err) {
+      let errorBotMessage: ChatMessageType;
       if (err instanceof Error && err.message === 'Invalid API Key') {
         handleInvalidApiKey();
+        return; // Early exit, no message needed as screen will change
+      } else if (err instanceof Error && err.message === 'Model Overloaded') {
+        errorBotMessage = {
+          role: 'bot',
+          text: 'Mistress abhi busy hai. The model is currently overloaded. Thoda ruko, phir se try karna.',
+        };
       } else {
-        const errorBotMessage: ChatMessageType = {
+        errorBotMessage = {
           role: 'bot',
           text: 'Sorry, abhi thoda technical issue hai. Baad mein try karna.',
         };
-        setMessages((prev) => [...prev, errorBotMessage]);
       }
+      setMessages((prev) => [...prev, errorBotMessage]);
     } finally {
       setIsLoading(false);
     }
