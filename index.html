@@ -1,33 +1,343 @@
-
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Femdom Hinglish Chatbot</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ashok Book Depo | Full Management System</title>
     <style>
-      body {
-        font-family: 'Poppins', sans-serif;
-      }
+        :root { --primary: #1a73e8; --bg: #f8f9fa; --success: #1e8e3e; --danger: #d93025; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar */
+        #sidebar { width: 320px; background: white; height: 100vh; padding: 20px; border-right: 1px solid #ddd; overflow-y: auto; flex-shrink: 0; }
+        .form-section { background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; margin-bottom: 20px; }
+        h3 { margin: 0 0 10px 0; font-size: 14px; color: var(--primary); border-bottom: 2px solid var(--primary); display: inline-block; }
+        input, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        .admin-btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+
+        /* Main Display */
+        #main { flex-grow: 1; padding: 20px; overflow-y: auto; }
+        #top-bar { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; margin-bottom: 20px; }
+        .top-row { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+        #searchBar { flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; text-indent: 10px; }
+        .nav-row { display: flex; align-items: center; gap: 15px; margin-top: 15px; }
+        .back-btn { padding: 8px 18px; background: #5f6368; color: white; border: none; border-radius: 5px; cursor: pointer; display: none; }
+        .settings-icon { font-size: 22px; cursor: pointer; }
+
+        /* Settings Overlay */
+        #settingsOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; }
+        .overlay-content { background: white; padding: 25px; border-radius: 12px; width: 500px; max-height: 85vh; overflow-y: auto; position: relative; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; font-size: 13px; }
+        .list-btns button { border: none; background: none; cursor: pointer; font-size: 16px; margin-left: 5px; }
+
+        /* Cards */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+        .card { background: white; border-radius: 12px; overflow: hidden; border: 1px solid #eee; text-align: center; }
+        .card img { width: 100%; height: 140px; object-fit: cover; }
+        .card-info { padding: 10px; }
+        .price { color: var(--danger); font-weight: bold; }
+        .card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 8px; border-top: 1px solid #f1f1f1; }
+        .btn-sm { padding: 5px; font-size: 9px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-date { background: var(--success); color: white; grid-column: span 2; padding: 7px; margin-top: 3px;}
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0"
-  }
-}
-</script>
 </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+<body>
+
+<div id="settingsOverlay">
+    <div class="overlay-content">
+        <span style="position:absolute; right:20px; cursor:pointer; font-size: 25px;" onclick="toggleSettings()">✖</span>
+        <h2 style="color:var(--primary)">Catalog Structure</h2>
+        
+        <div class="form-section">
+            <h3 id="catFormTitle">Categories</h3>
+            <input type="text" id="catName" placeholder="Category Name">
+            <input type="file" id="catImg">
+            <button class="admin-btn" id="catSaveBtn" onclick="saveCategory()">Save Category</button>
+            <div id="categoryList" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="form-section">
+            <h3 id="subFormTitle">Subcategories</h3>
+            <select id="parentCatSelect"></select>
+            <input type="text" id="subCatName" placeholder="Subcategory Name">
+            <input type="file" id="subCatImg">
+            <button class="admin-btn" id="subSaveBtn" onclick="saveSubCategory()">Save Subcategory</button>
+            <div id="subcategoryList" style="margin-top:10px;"></div>
+        </div>
+    </div>
+</div>
+
+<div id="sidebar">
+    <div class="form-section">
+        <h3 id="prodFormTitle">Manage Product</h3>
+        <select id="prodSubCatSelect"></select>
+        <input type="text" id="prodName" placeholder="Product Name">
+        <input type="number" id="prodPrice" placeholder="Price">
+        <input type="text" id="prodCode" placeholder="Party Code">
+        <input type="file" id="prodImg">
+        <button class="admin-btn" id="prodSaveBtn" onclick="uploadProduct()">Upload Product</button>
+        <button class="admin-btn" id="cancelProdBtn" style="display:none; background:#5f6368" onclick="resetProdForm()">Cancel Edit</button>
+    </div>
+</div>
+
+<div id="main">
+    <div id="top-bar">
+        <div class="top-row">
+            <input type="text" id="searchBar" placeholder="Search products or party codes..." oninput="handleSearch()">
+            <div class="settings-icon" onclick="toggleSettings()">⚙️</div>
+        </div>
+        <div class="nav-row">
+            <button class="back-btn" id="backBtn" onclick="goBack()">← Back</button>
+            <div id="breadcrumb">Main Catalog</div>
+        </div>
+    </div>
+    <div id="catalogDisplay" class="grid"></div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+    import { getDatabase, ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-database.js";
+    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-storage.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDb5ed1NlcTJs2vR4D4plKfp-dnl49PVpk",
+        authDomain: "ashok-book-depo.firebaseapp.com",
+        databaseURL: "https://ashok-book-depo-default-rtdb.firebaseio.com",
+        projectId: "ashok-book-depo",
+        storageBucket: "ashok-book-depo.firebasestorage.app",
+        messagingSenderId: "535504138867",
+        appId: "1:535504138867:web:9edcd28cc9a580cd4b3006"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const storage = getStorage(app);
+
+    let currentView = 'CATEGORIES'; 
+    let selectedCatID = "";
+    let selectedSubID = "";
+    let editIDs = { cat: null, sub: null, prod: null };
+    let dataCache = { categories: {}, products: {} };
+
+    window.toggleSettings = () => {
+        const s = document.getElementById('settingsOverlay');
+        s.style.display = (s.style.display === 'flex') ? 'none' : 'flex';
+    };
+
+    async function upload(file, folder) {
+        const path = `${folder}/${Date.now()}_${file.name}`;
+        const s = sRef(storage, path);
+        await uploadBytes(s, file);
+        return await getDownloadURL(s);
+    }
+
+    // --- Category Management ---
+    window.saveCategory = async () => {
+        const name = document.getElementById('catName').value.trim();
+        const file = document.getElementById('catImg').files[0];
+        if(!name && !editIDs.cat) return alert("Enter name");
+        
+        let imgUrl = editIDs.cat ? dataCache.categories[editIDs.cat].imgUrl : "";
+        if(file) imgUrl = await upload(file, 'categories');
+        
+        const id = editIDs.cat || name.replace(/[^a-zA-Z0-9]/g, "_");
+        await update(ref(db, 'categories/' + id), { id, name, imgUrl });
+        alert("Category Saved!");
+        editIDs.cat = null;
+        document.getElementById('catName').value = "";
+        document.getElementById('catFormTitle').innerText = "Categories";
+    };
+
+    window.editCat = (id) => {
+        editIDs.cat = id;
+        document.getElementById('catName').value = dataCache.categories[id].name;
+        document.getElementById('catFormTitle').innerText = "Editing Category...";
+    };
+
+    // --- Subcategory Management (With MOVE support) ---
+    window.saveSubCategory = async () => {
+        const newParentId = document.getElementById('parentCatSelect').value;
+        const name = document.getElementById('subCatName').value.trim();
+        const file = document.getElementById('subCatImg').files[0];
+        
+        if(!newParentId || !name) return alert("Select Parent and Name");
+
+        let imgUrl = "";
+        let oldParentId = null;
+
+        if (editIDs.sub) {
+            // Find old location to check for move
+            Object.keys(dataCache.categories).forEach(cKey => {
+                if(dataCache.categories[cKey].subcategories?.[editIDs.sub]) {
+                    oldParentId = cKey;
+                    imgUrl = dataCache.categories[cKey].subcategories[editIDs.sub].imgUrl;
+                }
+            });
+        }
+
+        if(file) imgUrl = await upload(file, 'subcategories');
+        const subId = editIDs.sub || name.replace(/[^a-zA-Z0-9]/g, "_");
+
+        // 1. Save to New Path
+        await update(ref(db, `categories/${newParentId}/subcategories/${subId}`), { id: subId, name, parentId: newParentId, imgUrl });
+
+        // 2. If moved, delete old path and update products
+        if (oldParentId && oldParentId !== newParentId) {
+            await remove(ref(db, `categories/${oldParentId}/subcategories/${subId}`));
+            Object.keys(dataCache.products).forEach(async (pk) => {
+                if (dataCache.products[pk].subId === subId && dataCache.products[pk].catId === oldParentId) {
+                    await update(ref(db, `products/${pk}`), { catId: newParentId });
+                }
+            });
+        }
+        
+        alert("Subcategory Saved!");
+        editIDs.sub = null;
+        document.getElementById('subCatName').value = "";
+    };
+
+    window.editSub = (catId, subId) => {
+        editIDs.sub = subId;
+        const sub = dataCache.categories[catId].subcategories[subId];
+        document.getElementById('parentCatSelect').value = catId;
+        document.getElementById('subCatName').value = sub.name;
+    };
+
+    // --- Product Management ---
+    window.uploadProduct = async () => {
+        const subData = JSON.parse(document.getElementById('prodSubCatSelect').value);
+        const name = document.getElementById('prodName').value.trim();
+        const price = document.getElementById('prodPrice').value;
+        const code = document.getElementById('prodCode').value.trim();
+        const file = document.getElementById('prodImg').files[0];
+
+        let imgUrl = editIDs.prod ? dataCache.products[editIDs.prod].imgUrl : "";
+        if(file) imgUrl = await upload(file, 'products');
+
+        const pData = { name, price, code, imgUrl, catId: subData.parentId, subId: subData.id, timestamp: Date.now() };
+        if(editIDs.prod) {
+            await update(ref(db, 'products/' + editIDs.prod), pData);
+        } else {
+            await push(ref(db, 'products'), pData);
+        }
+        alert("Product Action Successful!");
+        resetProdForm();
+    };
+
+    window.resetProdForm = () => {
+        editIDs.prod = null;
+        document.getElementById('prodFormTitle').innerText = "Manage Product";
+        document.getElementById('cancelProdBtn').style.display = "none";
+        document.getElementById('prodName').value = "";
+        document.getElementById('prodPrice').value = "";
+        document.getElementById('prodCode').value = "";
+    };
+
+    window.updateDate = async (id) => { await update(ref(db, 'products/' + id), { timestamp: Date.now() }); };
+    window.deleteItem = async (path) => { if(confirm("Confirm Delete?")) await remove(ref(db, path)); };
+
+    // --- Rendering Engine ---
+    window.render = () => {
+        const display = document.getElementById('catalogDisplay');
+        const breadcrumb = document.getElementById('breadcrumb');
+        const backBtn = document.getElementById('backBtn');
+        display.innerHTML = '';
+
+        if (currentView === 'CATEGORIES') {
+            backBtn.style.display = 'none';
+            breadcrumb.innerText = 'Main Catalog';
+            Object.values(dataCache.categories).forEach(cat => {
+                const card = createCard(cat.imgUrl, cat.name);
+                card.onclick = () => { selectedCatID = cat.id; currentView = 'SUBCATEGORIES'; render(); };
+                display.appendChild(card);
+            });
+        } else if (currentView === 'SUBCATEGORIES') {
+            backBtn.style.display = 'block';
+            breadcrumb.innerText = `Category: ${dataCache.categories[selectedCatID]?.name}`;
+            const subs = dataCache.categories[selectedCatID]?.subcategories || {};
+            Object.values(subs).forEach(sub => {
+                const card = createCard(sub.imgUrl, sub.name);
+                card.onclick = () => { selectedSubID = sub.id; currentView = 'PRODUCTS'; render(); };
+                display.appendChild(card);
+            });
+        } else if (currentView === 'PRODUCTS') {
+            backBtn.style.display = 'block';
+            breadcrumb.innerText = `${dataCache.categories[selectedCatID]?.name} > ${dataCache.categories[selectedCatID]?.subcategories[selectedSubID]?.name}`;
+            const filtered = Object.keys(dataCache.products).filter(k => dataCache.products[k].catId === selectedCatID && dataCache.products[k].subId === selectedSubID)
+                .sort((a,b) => dataCache.products[b].timestamp - dataCache.products[a].timestamp);
+            filtered.forEach(k => display.appendChild(createProductCard(k)));
+        }
+    };
+
+    function createCard(img, title) {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `<img src="${img}"><div class="card-info"><h4>${title}</h4></div>`;
+        return div;
+    }
+
+    function createProductCard(id) {
+        const p = dataCache.products[id];
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `<img src="${p.imgUrl}"><div class="card-info"><h4>${p.name}</h4><div class="price">₹${p.price}</div><small>${p.code}</small></div>
+            <div class="card-actions">
+                <button class="btn-sm" style="background:#eee" onclick="event.stopPropagation(); startProdEdit('${id}')">EDIT</button>
+                <button class="btn-sm" style="background:#fee" onclick="event.stopPropagation(); deleteItem('products/${id}')">DEL</button>
+                <button class="btn-sm btn-date" onclick="event.stopPropagation(); updateDate('${id}')">PUSH TO TOP</button>
+            </div>`;
+        return div;
+    }
+
+    window.startProdEdit = (id) => {
+        editIDs.prod = id;
+        const p = dataCache.products[id];
+        document.getElementById('prodName').value = p.name;
+        document.getElementById('prodPrice').value = p.price;
+        document.getElementById('prodCode').value = p.code;
+        document.getElementById('prodSubCatSelect').value = JSON.stringify({id: p.subId, parentId: p.catId});
+        document.getElementById('prodFormTitle').innerText = "Editing Product...";
+        document.getElementById('cancelProdBtn').style.display = "block";
+    };
+
+    window.handleSearch = () => {
+        const q = document.getElementById('searchBar').value.toLowerCase();
+        if(!q) return render();
+        const display = document.getElementById('catalogDisplay');
+        display.innerHTML = '';
+        Object.keys(dataCache.products).filter(k => dataCache.products[k].name.toLowerCase().includes(q) || dataCache.products[k].code.toLowerCase().includes(q))
+            .forEach(k => display.appendChild(createProductCard(k)));
+    };
+
+    window.goBack = () => {
+        if (currentView === 'PRODUCTS') currentView = 'SUBCATEGORIES';
+        else if (currentView === 'SUBCATEGORIES') currentView = 'CATEGORIES';
+        render();
+    };
+
+    // --- Realtime Sync ---
+    onValue(ref(db, 'categories'), (snap) => {
+        dataCache.categories = snap.val() || {};
+        const pSel = document.getElementById('parentCatSelect');
+        const sSel = document.getElementById('prodSubCatSelect');
+        const cList = document.getElementById('categoryList');
+        const sList = document.getElementById('subcategoryList');
+        
+        pSel.innerHTML = sSel.innerHTML = '<option value="">-- Choose Category --</option>';
+        cList.innerHTML = sList.innerHTML = '';
+
+        Object.values(dataCache.categories).forEach(cat => {
+            pSel.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+            cList.innerHTML += `<div class="list-item"><span>${cat.name}</span><div class="list-btns"><button onclick="editCat('${cat.id}')">✏️</button><button onclick="deleteItem('categories/${cat.id}')">🗑️</button></div></div>`;
+            if(cat.subcategories) Object.values(cat.subcategories).forEach(sub => {
+                sSel.innerHTML += `<option value='${JSON.stringify({id: sub.id, parentId: cat.id})}'>${sub.name}</option>`;
+                sList.innerHTML += `<div class="list-item"><span>${sub.name} (${cat.name})</span><div class="list-btns"><button onclick="editSub('${cat.id}','${sub.id}')">✏️</button><button onclick="deleteItem('categories/${cat.id}/subcategories/${sub.id}')">🗑️</button></div></div>`;
+            });
+        });
+        render();
+    });
+
+    onValue(ref(db, 'products'), (snap) => { dataCache.products = snap.val() || {}; render(); });
+</script>
+</body>
 </html>
