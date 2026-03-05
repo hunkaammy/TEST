@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ashok Book Depo | Universal Compression</title>
+    <title>Ashok Book Depo | Ultimate Manager</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -33,9 +33,14 @@
         .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding-bottom: 100px; }
         @media (min-width: 768px) { .grid { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
 
-        /* --- CARDS --- */
+        /* --- CARDS & LAZY LOAD --- */
         .card { background: white; border-radius: var(--radius); overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #f1f1f1; display: flex; flex-direction: column;}
-        .card img { width: 100%; aspect-ratio: 1/1; object-fit: cover; background: #eee; }
+        
+        /* Skeleton Placeholder for Lazy Load */
+        .img-container { width: 100%; aspect-ratio: 1/1; background: #e5e7eb; position: relative; overflow: hidden; }
+        .card img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s ease-in-out; }
+        .card img.loaded { opacity: 1; }
+
         .card-info { padding: 10px; flex-grow: 1; text-align: center; }
         .price { color: var(--danger); font-weight: 800; font-size: 16px; margin: 4px 0; }
         .card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 8px; background: #fafafa; }
@@ -44,30 +49,22 @@
         .btn-del { background: #fee2e2; color: var(--danger); }
         .btn-push { grid-column: span 2; background: #dcfce7; color: var(--success); margin-top: 4px; }
 
-        /* --- FAB --- */
+        /* --- UI ELEMENTS --- */
         #fab { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4); font-size: 24px; cursor: pointer; z-index: 500; border: none; }
-
-        /* --- MODALS --- */
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; align-items: flex-end; }
-        .modal-content { background: white; width: 100%; border-radius: 24px 24px 0 0; padding: 24px; box-sizing: border-box; max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s ease-out; }
+        .modal-content { background: white; width: 100%; border-radius: 24px 24px 0 0; padding: 24px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s ease-out; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-
         .form-section { margin-bottom: 24px; background: #f9fafb; padding: 15px; border-radius: 12px; }
         input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #e5e7eb; border-radius: 12px; font-size: 16px; outline: none; box-sizing: border-box; }
-        .btn-submit { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 700; font-size: 16px; margin-top: 10px; }
-
-        /* --- MANAGE LISTS --- */
-        .manage-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
-        .manage-btns button { background: none; border: none; cursor: pointer; font-size: 16px; margin-left: 10px; }
-        
+        .btn-submit { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 700; font-size: 16px; }
         .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.8); z-index: 2000; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); }
+        .manage-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; }
     </style>
 </head>
 <body>
 
 <div id="loadingUI" class="loading-overlay">
-    <div style="margin-bottom:10px;">⏳ Optimizing Image...</div>
-    <small style="color:#666">Reducing size for faster loading</small>
+    <div>⏳ Processing & Uploading...</div>
 </div>
 
 <div id="top-bar">
@@ -99,7 +96,7 @@
             <input type="number" id="prodPrice" placeholder="Price (₹)">
             <input type="text" id="prodCode" placeholder="Party Code">
             <input type="file" id="prodImg" accept="image/*">
-            <button class="btn-submit" id="prodSaveBtn" onclick="uploadProduct()">Save Product</button>
+            <button class="btn-submit" onclick="uploadProduct()">Save Product</button>
             <button class="btn-submit" onclick="closeModal('productModal')" style="background:#eee; color:#333; margin-top:8px;">Cancel</button>
         </div>
     </div>
@@ -108,7 +105,6 @@
 <div id="settingsModal" class="modal" onclick="closeOnOutsideClick(event)">
     <div class="modal-content">
         <h2 style="margin-top:0">Manage Catalog</h2>
-        
         <div class="form-section">
             <h3 id="catFormTitle">Category Manager</h3>
             <input type="text" id="catName" placeholder="Category Name">
@@ -116,7 +112,6 @@
             <button class="btn-submit" onclick="saveCategory()">Save Category</button>
             <div id="categoryList"></div>
         </div>
-
         <div class="form-section">
             <h3 id="subFormTitle">Subcategory Manager</h3>
             <select id="parentCatSelect"></select>
@@ -125,7 +120,6 @@
             <button class="btn-submit" onclick="saveSubCategory()">Save Subcategory</button>
             <div id="subcategoryList"></div>
         </div>
-        
         <button class="btn-submit" onclick="closeModal('settingsModal')" style="background:#eee; color:#333;">Close</button>
     </div>
 </div>
@@ -155,10 +149,10 @@
     let dataCache = { categories: {}, products: {} };
 
     window.openModal = (id) => document.getElementById(id).style.display = 'flex';
-    window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+    window.closeModal = (id) => { document.getElementById(id).style.display = 'none'; if(id === 'productModal') resetProdForm(); };
     window.closeOnOutsideClick = (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; };
 
-    // --- COMPRESSION ENGINE ---
+    // --- OPTIMIZATION ENGINE ---
     async function compressImage(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -182,13 +176,25 @@
     async function processAndUpload(file, folder) {
         document.getElementById('loadingUI').style.display = 'flex';
         const blob = await compressImage(file);
-        const path = `${folder}/${Date.now()}_optimized.jpg`;
+        const path = `${folder}/${Date.now()}.jpg`;
         const s = sRef(storage, path);
         await uploadBytes(s, blob);
         const url = await getDownloadURL(s);
         document.getElementById('loadingUI').style.display = 'none';
         return url;
     }
+
+    // --- LAZY LOAD OBSERVER ---
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                img.src = img.dataset.src;
+                img.onload = () => img.classList.add('loaded');
+                observer.unobserve(img);
+            }
+        });
+    });
 
     // --- ACTIONS ---
     window.saveCategory = async () => {
@@ -205,7 +211,7 @@
         const parentId = document.getElementById('parentCatSelect').value;
         const name = document.getElementById('subCatName').value.trim();
         const file = document.getElementById('subCatImg').files[0];
-        if(!parentId || !name) return alert("Select Parent and Name");
+        if(!parentId || !name) return alert("Required fields missing");
         let imgUrl = (editIDs.sub && dataCache.categories[parentId]?.subcategories?.[editIDs.sub]) ? dataCache.categories[parentId].subcategories[editIDs.sub].imgUrl : "";
         if(file) imgUrl = await processAndUpload(file, 'subcategories');
         const subId = editIDs.sub || name.replace(/[^a-zA-Z0-9]/g, "_");
@@ -215,7 +221,7 @@
 
     window.uploadProduct = async () => {
         const subDataRaw = document.getElementById('prodSubCatSelect').value;
-        if(!subDataRaw) return alert("Pick a subcategory!");
+        if(!subDataRaw) return alert("Select subcategory!");
         const subData = JSON.parse(subDataRaw);
         const name = document.getElementById('prodName').value.trim();
         const price = document.getElementById('prodPrice').value;
@@ -229,13 +235,12 @@
         closeModal('productModal');
     };
 
-    // --- EDITING LOGIC ---
     window.editCat = (id) => { editIDs.cat = id; document.getElementById('catName').value = dataCache.categories[id].name; };
     window.editSub = (catId, subId) => { editIDs.sub = subId; document.getElementById('subCatName').value = dataCache.categories[catId].subcategories[subId].name; };
     window.startProdEdit = (id) => { editIDs.prod = id; const p = dataCache.products[id]; document.getElementById('prodName').value = p.name; document.getElementById('prodPrice').value = p.price; document.getElementById('prodCode').value = p.code; document.getElementById('prodSubCatSelect').value = JSON.stringify({id: p.subId, parentId: p.catId}); openModal('productModal'); };
-
+    window.resetProdForm = () => { editIDs.prod = null; document.getElementById('prodName').value = ""; document.getElementById('prodPrice').value = ""; document.getElementById('prodCode').value = ""; };
     window.updateDate = async (id) => { await update(ref(db, 'products/' + id), { timestamp: Date.now() }); };
-    window.deleteItem = async (path) => { if(confirm("Delete permanently?")) await remove(ref(db, path)); };
+    window.deleteItem = async (path) => { if(confirm("Confirm Delete?")) await remove(ref(db, path)); };
 
     // --- NAVIGATION & RENDER ---
     window.render = () => {
@@ -261,18 +266,34 @@
         } else if (currentView === 'PRODUCTS') {
             backBtn.style.display = 'block'; breadcrumb.innerText = dataCache.categories[selectedCatID]?.subcategories[selectedSubID]?.name;
             const filtered = Object.keys(dataCache.products).filter(k => dataCache.products[k].catId === selectedCatID && dataCache.products[k].subId === selectedSubID).sort((a,b) => dataCache.products[b].timestamp - dataCache.products[a].timestamp);
-            filtered.forEach(k => {
-                const p = dataCache.products[k];
-                const div = document.createElement('div'); div.className = 'card';
-                div.innerHTML = `<img src="${p.imgUrl}"><div class="card-info"><h4>${p.name}</h4><div class="price">₹${p.price}</div><small class="code-tag">${p.code}</small></div>
-                    <div class="card-actions"><button class="btn-action btn-edit" onclick="event.stopPropagation(); startProdEdit('${k}')">EDIT</button><button class="btn-action btn-del" onclick="event.stopPropagation(); deleteItem('products/${k}')">DEL</button><button class="btn-action btn-push" onclick="event.stopPropagation(); updateDate('${k}')">TOP</button></div>`;
-                display.appendChild(div);
-            });
+            filtered.forEach(k => display.appendChild(createProductCard(k)));
         }
+        // Initialize Lazy Loading on new elements
+        document.querySelectorAll('img[data-src]').forEach(img => imageObserver.observe(img));
     };
 
-    function createCard(img, title) { const div = document.createElement('div'); div.className = 'card'; div.innerHTML = `<img src="${img}"><div class="card-info"><h4>${title}</h4></div>`; return div; }
-    window.handleSearch = () => { const q = document.getElementById('searchBar').value.toLowerCase(); if(!q) return render(); const display = document.getElementById('catalogDisplay'); display.innerHTML = ''; Object.keys(dataCache.products).filter(k => dataCache.products[k].name.toLowerCase().includes(q) || dataCache.products[k].code.toLowerCase().includes(q)).forEach(k => { const p = dataCache.products[k]; const div = document.createElement('div'); div.className = 'card'; div.innerHTML = `<img src="${p.imgUrl}"><div class="card-info"><h4>${p.name}</h4><div class="price">₹${p.price}</div><small class="code-tag">${p.code}</small></div><div class="card-actions"><button class="btn-action btn-edit" onclick="event.stopPropagation(); startProdEdit('${k}')">EDIT</button><button class="btn-action btn-del" onclick="event.stopPropagation(); deleteItem('products/${k}')">DEL</button></div>`; display.appendChild(div); }); };
+    function createCard(img, title) {
+        const div = document.createElement('div'); div.className = 'card';
+        div.innerHTML = `<div class="img-container"><img data-src="${img}" alt="${title}"></div><div class="card-info"><h4>${title}</h4></div>`;
+        return div;
+    }
+
+    function createProductCard(id) {
+        const p = dataCache.products[id];
+        const div = document.createElement('div'); div.className = 'card';
+        div.innerHTML = `<div class="img-container"><img data-src="${p.imgUrl}" alt="${p.name}"></div><div class="card-info"><h4>${p.name}</h4><div class="price">₹${p.price}</div><small class="code-tag">${p.code}</small></div>
+            <div class="card-actions"><button class="btn-action btn-edit" onclick="event.stopPropagation(); startProdEdit('${id}')">EDIT</button><button class="btn-action btn-del" onclick="event.stopPropagation(); deleteItem('products/${id}')">DEL</button><button class="btn-action btn-push" onclick="event.stopPropagation(); updateDate('${id}')">TOP</button></div>`;
+        return div;
+    }
+
+    window.handleSearch = () => {
+        const q = document.getElementById('searchBar').value.toLowerCase();
+        if(!q) return render();
+        const display = document.getElementById('catalogDisplay'); display.innerHTML = '';
+        Object.keys(dataCache.products).filter(k => dataCache.products[k].name.toLowerCase().includes(q) || dataCache.products[k].code.toLowerCase().includes(q)).forEach(k => display.appendChild(createProductCard(k)));
+        document.querySelectorAll('img[data-src]').forEach(img => imageObserver.observe(img));
+    };
+
     window.goBack = () => { if (currentView === 'PRODUCTS') currentView = 'SUBCATEGORIES'; else if (currentView === 'SUBCATEGORIES') currentView = 'CATEGORIES'; render(); };
 
     onValue(ref(db, 'categories'), (snap) => {
