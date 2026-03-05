@@ -1,0 +1,23 @@
+    window.sendOrder = () => {
+        const msg = cart.map(i => `${i.name} (₹${i.price})`).join('%0A');
+        const total = cart.reduce((s, i) => s + i.price, 0);
+        window.open(`https://wa.me/91XXXXXXXXXX?text=*Order Details:*%0A${msg}%0A%0A*Total: ₹${total}*`, '_blank');
+    };
+
+    // --- DATA SYNC ---
+    onValue(ref(db, 'categories'), (snap) => {
+        dataCache.categories = snap.val() || {};
+        if(!selectedCatID && Object.keys(dataCache.categories).length > 0) {
+            selectedCatID = Object.keys(dataCache.categories)[0];
+        }
+        renderTabs();
+        renderContent();
+    });
+
+    onValue(ref(db, 'products'), (snap) => {
+        dataCache.products = snap.val() || {};
+        renderContent();
+    });
+</script>
+</body>
+</html>
