@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ashok Book Depo | Ultimate Manager</title>
+    <title>Ashok Book Depo | Stock Manager</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -12,17 +12,10 @@
             --radius: 16px; --shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
         }
 
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg); 
-            color: var(--text-main); margin: 0; display: flex; flex-direction: column; 
-            height: 100vh; overflow: hidden;
-        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg); color: var(--text-main); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
         /* --- NAVIGATION --- */
-        #top-bar {
-            background: white; padding: 12px 16px; display: flex; flex-direction: column;
-            gap: 12px; border-bottom: 1px solid #e5e7eb; z-index: 100;
-        }
+        #top-bar { background: white; padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid #e5e7eb; z-index: 100; }
         .search-row { display: flex; align-items: center; background: #f3f4f6; border-radius: 12px; padding: 8px 14px; gap: 10px; }
         #searchBar { border: none; background: transparent; width: 100%; font-size: 16px; outline: none; }
         .nav-actions { display: flex; justify-content: space-between; align-items: center; }
@@ -33,13 +26,15 @@
         .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding-bottom: 100px; }
         @media (min-width: 768px) { .grid { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
 
-        /* --- CARDS & LAZY LOAD --- */
-        .card { background: white; border-radius: var(--radius); overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #f1f1f1; display: flex; flex-direction: column;}
-        
-        /* Skeleton Placeholder for Lazy Load */
+        /* --- CARDS & STOCK STATUS --- */
+        .card { background: white; border-radius: var(--radius); overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #f1f1f1; display: flex; flex-direction: column; position: relative; }
         .img-container { width: 100%; aspect-ratio: 1/1; background: #e5e7eb; position: relative; overflow: hidden; }
-        .card img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s ease-in-out; }
+        .card img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s; }
         .card img.loaded { opacity: 1; }
+        
+        /* Out of Stock Styling */
+        .card.out-of-stock { filter: grayscale(0.8); opacity: 0.7; }
+        .stock-badge { position: absolute; top: 10px; right: 10px; background: var(--danger); color: white; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; z-index: 5; }
 
         .card-info { padding: 10px; flex-grow: 1; text-align: center; }
         .price { color: var(--danger); font-weight: 800; font-size: 16px; margin: 4px 0; }
@@ -47,7 +42,8 @@
         .btn-action { border: none; padding: 8px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor: pointer; }
         .btn-edit { background: #e0e7ff; color: var(--primary); }
         .btn-del { background: #fee2e2; color: var(--danger); }
-        .btn-push { grid-column: span 2; background: #dcfce7; color: var(--success); margin-top: 4px; }
+        .btn-stock { grid-column: span 2; background: #f3f4f6; color: #374151; margin-top: 4px; }
+        .btn-stock.available { background: #dcfce7; color: var(--success); }
 
         /* --- UI ELEMENTS --- */
         #fab { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4); font-size: 24px; cursor: pointer; z-index: 500; border: none; }
@@ -55,22 +51,21 @@
         .modal-content { background: white; width: 100%; border-radius: 24px 24px 0 0; padding: 24px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s ease-out; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .form-section { margin-bottom: 24px; background: #f9fafb; padding: 15px; border-radius: 12px; }
-        input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #e5e7eb; border-radius: 12px; font-size: 16px; outline: none; box-sizing: border-box; }
-        .btn-submit { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 700; font-size: 16px; }
+        input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #e5e7eb; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
+        .btn-submit { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 700; font-size: 16px; cursor: pointer; }
         .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.8); z-index: 2000; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); }
-        .manage-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; }
     </style>
 </head>
 <body>
 
 <div id="loadingUI" class="loading-overlay">
-    <div>⏳ Processing & Uploading...</div>
+    <div>⏳ Processing...</div>
 </div>
 
 <div id="top-bar">
     <div class="search-row">
         <span>🔍</span>
-        <input type="text" id="searchBar" placeholder="Search products or codes..." oninput="handleSearch()">
+        <input type="text" id="searchBar" placeholder="Search products..." oninput="handleSearch()">
     </div>
     <div class="nav-actions">
         <div style="display:flex; align-items:center; gap:8px;">
@@ -95,6 +90,10 @@
             <input type="text" id="prodName" placeholder="Product Name">
             <input type="number" id="prodPrice" placeholder="Price (₹)">
             <input type="text" id="prodCode" placeholder="Party Code">
+            <select id="prodStatus">
+                <option value="available">Available</option>
+                <option value="out_of_stock">Out of Stock</option>
+            </select>
             <input type="file" id="prodImg" accept="image/*">
             <button class="btn-submit" onclick="uploadProduct()">Save Product</button>
             <button class="btn-submit" onclick="closeModal('productModal')" style="background:#eee; color:#333; margin-top:8px;">Cancel</button>
@@ -110,7 +109,7 @@
             <input type="text" id="catName" placeholder="Category Name">
             <input type="file" id="catImg" accept="image/*">
             <button class="btn-submit" onclick="saveCategory()">Save Category</button>
-            <div id="categoryList"></div>
+            <div id="categoryList" style="margin-top:10px"></div>
         </div>
         <div class="form-section">
             <h3 id="subFormTitle">Subcategory Manager</h3>
@@ -118,9 +117,8 @@
             <input type="text" id="subCatName" placeholder="Subcategory Name">
             <input type="file" id="subCatImg" accept="image/*">
             <button class="btn-submit" onclick="saveSubCategory()">Save Subcategory</button>
-            <div id="subcategoryList"></div>
+            <div id="subcategoryList" style="margin-top:10px"></div>
         </div>
-        <button class="btn-submit" onclick="closeModal('settingsModal')" style="background:#eee; color:#333;">Close</button>
     </div>
 </div>
 
@@ -152,7 +150,7 @@
     window.closeModal = (id) => { document.getElementById(id).style.display = 'none'; if(id === 'productModal') resetProdForm(); };
     window.closeOnOutsideClick = (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; };
 
-    // --- OPTIMIZATION ENGINE ---
+    // --- COMPRESSION & UPLOAD ---
     async function compressImage(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -184,7 +182,7 @@
         return url;
     }
 
-    // --- LAZY LOAD OBSERVER ---
+    // --- LAZY LOAD ---
     const imageObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -211,7 +209,7 @@
         const parentId = document.getElementById('parentCatSelect').value;
         const name = document.getElementById('subCatName').value.trim();
         const file = document.getElementById('subCatImg').files[0];
-        if(!parentId || !name) return alert("Required fields missing");
+        if(!parentId || !name) return alert("Missing info");
         let imgUrl = (editIDs.sub && dataCache.categories[parentId]?.subcategories?.[editIDs.sub]) ? dataCache.categories[parentId].subcategories[editIDs.sub].imgUrl : "";
         if(file) imgUrl = await processAndUpload(file, 'subcategories');
         const subId = editIDs.sub || name.replace(/[^a-zA-Z0-9]/g, "_");
@@ -221,33 +219,50 @@
 
     window.uploadProduct = async () => {
         const subDataRaw = document.getElementById('prodSubCatSelect').value;
-        if(!subDataRaw) return alert("Select subcategory!");
+        if(!subDataRaw) return alert("Select subcategory");
         const subData = JSON.parse(subDataRaw);
         const name = document.getElementById('prodName').value.trim();
         const price = document.getElementById('prodPrice').value;
         const code = document.getElementById('prodCode').value.trim();
+        const status = document.getElementById('prodStatus').value;
         const file = document.getElementById('prodImg').files[0];
+
         let imgUrl = editIDs.prod ? dataCache.products[editIDs.prod].imgUrl : "";
         if(file) imgUrl = await processAndUpload(file, 'products');
-        const pData = { name, price, code, imgUrl, catId: subData.parentId, subId: subData.id, timestamp: Date.now() };
+
+        const pData = { name, price, code, imgUrl, status, catId: subData.parentId, subId: subData.id, timestamp: Date.now() };
         if(editIDs.prod) await update(ref(db, 'products/' + editIDs.prod), pData);
         else await push(ref(db, 'products'), pData);
         closeModal('productModal');
     };
 
+    window.toggleStock = async (id, currentStatus) => {
+        const newStatus = currentStatus === 'available' ? 'out_of_stock' : 'available';
+        await update(ref(db, 'products/' + id), { status: newStatus });
+    };
+
+    // --- EDITING ---
     window.editCat = (id) => { editIDs.cat = id; document.getElementById('catName').value = dataCache.categories[id].name; };
     window.editSub = (catId, subId) => { editIDs.sub = subId; document.getElementById('subCatName').value = dataCache.categories[catId].subcategories[subId].name; };
-    window.startProdEdit = (id) => { editIDs.prod = id; const p = dataCache.products[id]; document.getElementById('prodName').value = p.name; document.getElementById('prodPrice').value = p.price; document.getElementById('prodCode').value = p.code; document.getElementById('prodSubCatSelect').value = JSON.stringify({id: p.subId, parentId: p.catId}); openModal('productModal'); };
+    window.startProdEdit = (id) => { 
+        editIDs.prod = id; const p = dataCache.products[id]; 
+        document.getElementById('prodName').value = p.name; 
+        document.getElementById('prodPrice').value = p.price; 
+        document.getElementById('prodCode').value = p.code; 
+        document.getElementById('prodStatus').value = p.status || 'available';
+        document.getElementById('prodSubCatSelect').value = JSON.stringify({id: p.subId, parentId: p.catId}); 
+        openModal('productModal'); 
+    };
     window.resetProdForm = () => { editIDs.prod = null; document.getElementById('prodName').value = ""; document.getElementById('prodPrice').value = ""; document.getElementById('prodCode').value = ""; };
-    window.updateDate = async (id) => { await update(ref(db, 'products/' + id), { timestamp: Date.now() }); };
     window.deleteItem = async (path) => { if(confirm("Confirm Delete?")) await remove(ref(db, path)); };
 
-    // --- NAVIGATION & RENDER ---
+    // --- RENDER ---
     window.render = () => {
         const display = document.getElementById('catalogDisplay');
         const breadcrumb = document.getElementById('breadcrumb');
         const backBtn = document.getElementById('backBtn');
         display.innerHTML = '';
+
         if (currentView === 'CATEGORIES') {
             backBtn.style.display = 'none'; breadcrumb.innerText = 'Main Catalog';
             Object.values(dataCache.categories).forEach(cat => {
@@ -268,7 +283,6 @@
             const filtered = Object.keys(dataCache.products).filter(k => dataCache.products[k].catId === selectedCatID && dataCache.products[k].subId === selectedSubID).sort((a,b) => dataCache.products[b].timestamp - dataCache.products[a].timestamp);
             filtered.forEach(k => display.appendChild(createProductCard(k)));
         }
-        // Initialize Lazy Loading on new elements
         document.querySelectorAll('img[data-src]').forEach(img => imageObserver.observe(img));
     };
 
@@ -280,9 +294,20 @@
 
     function createProductCard(id) {
         const p = dataCache.products[id];
-        const div = document.createElement('div'); div.className = 'card';
-        div.innerHTML = `<div class="img-container"><img data-src="${p.imgUrl}" alt="${p.name}"></div><div class="card-info"><h4>${p.name}</h4><div class="price">₹${p.price}</div><small class="code-tag">${p.code}</small></div>
-            <div class="card-actions"><button class="btn-action btn-edit" onclick="event.stopPropagation(); startProdEdit('${id}')">EDIT</button><button class="btn-action btn-del" onclick="event.stopPropagation(); deleteItem('products/${id}')">DEL</button><button class="btn-action btn-push" onclick="event.stopPropagation(); updateDate('${id}')">TOP</button></div>`;
+        const isOut = p.status === 'out_of_stock';
+        const div = document.createElement('div'); 
+        div.className = `card ${isOut ? 'out-of-stock' : ''}`;
+        div.innerHTML = `
+            ${isOut ? '<div class="stock-badge">SOLD OUT</div>' : ''}
+            <div class="img-container"><img data-src="${p.imgUrl}" alt="${p.name}"></div>
+            <div class="card-info"><h4>${p.name}</h4><div class="price">₹${p.price}</div><small>${p.code}</small></div>
+            <div class="card-actions">
+                <button class="btn-action btn-edit" onclick="event.stopPropagation(); startProdEdit('${id}')">EDIT</button>
+                <button class="btn-action btn-del" onclick="event.stopPropagation(); deleteItem('products/${id}')">DEL</button>
+                <button class="btn-action btn-stock ${!isOut ? 'available' : ''}" onclick="event.stopPropagation(); toggleStock('${id}', '${p.status || 'available'}')">
+                    ${isOut ? 'MARK AVAILABLE' : 'MARK SOLD OUT'}
+                </button>
+            </div>`;
         return div;
     }
 
@@ -302,10 +327,10 @@
         pSel.innerHTML = sSel.innerHTML = '<option value="">-- Choose Category --</option>'; cList.innerHTML = sList.innerHTML = '';
         Object.values(dataCache.categories).forEach(cat => {
             pSel.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
-            cList.innerHTML += `<div class="manage-item"><span>${cat.name}</span><div class="manage-btns"><button onclick="editCat('${cat.id}')">✏️</button><button onclick="deleteItem('categories/${cat.id}')">🗑️</button></div></div>`;
+            cList.innerHTML += `<div class="manage-item"><span>${cat.name}</span><div><button onclick="editCat('${cat.id}')">✏️</button><button onclick="deleteItem('categories/${cat.id}')">🗑️</button></div></div>`;
             if(cat.subcategories) Object.values(cat.subcategories).forEach(sub => {
                 sSel.innerHTML += `<option value='${JSON.stringify({id: sub.id, parentId: cat.id})}'>${sub.name}</option>`;
-                sList.innerHTML += `<div class="manage-item"><span>${sub.name} (${cat.name})</span><div class="manage-btns"><button onclick="editSub('${cat.id}','${sub.id}')">✏️</button><button onclick="deleteItem('categories/${cat.id}/subcategories/${sub.id}')">🗑️</button></div></div>`;
+                sList.innerHTML += `<div class="manage-item"><span>${sub.name}</span><div><button onclick="editSub('${cat.id}','${sub.id}')">✏️</button><button onclick="deleteItem('categories/${cat.id}/subcategories/${sub.id}')">🗑️</button></div></div>`;
             });
         });
         render();
